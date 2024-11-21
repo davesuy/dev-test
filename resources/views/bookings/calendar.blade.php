@@ -18,7 +18,7 @@
 
             @php
                 $selectedTimeZone = request('time_zone', 'UTC');
-                $eventDate = \Carbon\Carbon::parse($event->getStart()->getDateTime())->setTimezone($selectedTimeZone)->format('F j, Y H:i');
+                $eventDate = $event->getStart() ? \Carbon\Carbon::parse($event->getStart()->getDateTime())->setTimezone($selectedTimeZone)->format('F j, Y H:i') : 'No start time';
             @endphp
 
             <h2 class="text-lg mb-4"><strong>Event Date:</strong> {{ $eventDate }} ({{ $selectedTimeZone }})</h2>
@@ -26,9 +26,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach ($timeSlots as $time)
                     @php
-                        $isBooked = collect(session('bookings', []))->contains(function ($booking) use ($selectedDate, $time) {
-                            return $booking['booking_date'] === $selectedDate && $booking['booking_time'] === $time['time'];
-                        });
+                        $isBooked = in_array($time['time'], $bookedSlots);
                     @endphp
                     <div class="border p-4 rounded-lg {{ $isBooked ? 'bg-red-100' : 'bg-green-100' }}">
                         <span class="text-lg font-medium">{{ $time['time'] }}</span>
