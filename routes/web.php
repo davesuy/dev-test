@@ -7,6 +7,10 @@ use App\Http\Controllers\BookingController;
 
 use App\Services\GoogleCalendarService;
 
+// Route::get('/', function () {
+//     return view('welcome');
+// });
+
 
 Route::get('/google-calendar/auth', function (GoogleCalendarService $googleCalendarService) {
     $client = $googleCalendarService->getClient();
@@ -31,30 +35,6 @@ Route::get('/google-calendar/callback', function (GoogleCalendarService $googleC
     }
 });
 
-Route::get('/google-calendar/events', function (GoogleCalendarService $googleCalendarService) {
-    $client = $googleCalendarService->getClient();
-    $client->setAccessToken(json_decode(session('google_calendar_token'), true));
-    $events = $googleCalendarService->listEvents();
-    return view('events.index', compact('events'));
-});
-
-Route::post('/google-calendar/events', function (GoogleCalendarService $googleCalendarService) {
-    $client = $googleCalendarService->getClient();
-    $client->setAccessToken(session('google_calendar_token'));
-
-    $eventData = [
-        'summary' => request('summary'),
-        'start' => ['dateTime' => request('start')],
-        'end' => ['dateTime' => request('end')],
-    ];
-
-    $event = $googleCalendarService->createEvent('primary', $eventData);
-    return redirect('/google-calendar/events');
-});
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
 
 Route::get('/dashboard', function () {
     return view('dashboard');
