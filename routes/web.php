@@ -5,6 +5,53 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\BookingController;
 
+use App\Services\GoogleCalendarService;
+
+
+Route::get('/google-calendar/auth', function (GoogleCalendarService $googleCalendarService) {
+    $client = $googleCalendarService->getClient();
+    $authUrl = $client->createAuthUrl();
+    return redirect($authUrl);
+});
+
+Route::get('/google-calendar/callback', function (GoogleCalendarService $googleCalendarService) {
+    $client = $googleCalendarService->getClient();
+    $code = request('code');
+
+    if (!$code) {
+        return redirect('/google-calendar/auth')->withErrors('Authorization code is missing.');
+    }
+
+    try {
+        $client->authenticate($code);
+        session(['google_calendar_token' => json_encode($client->getAccessToken())]);
+        return redirect('/google-calendar/events');
+    } catch (\Exception $e) {
+        return redirect('/google-calendar/auth')->withErrors('Invalid authorization code.');
+    }
+});
+
+Route::get('/google-calendar/events', function (GoogleCalendarService $googleCalendarService) {
+    $client = $googleCalendarService->getClient();
+    $client->setAccessToken(json_decode(session('google_calendar_token'), true));
+    $events = $googleCalendarService->listEvents();
+    return view('events.index', compact('events'));
+});
+
+Route::post('/google-calendar/events', function (GoogleCalendarService $googleCalendarService) {
+    $client = $googleCalendarService->getClient();
+    $client->setAccessToken(session('google_calendar_token'));
+
+    $eventData = [
+        'summary' => request('summary'),
+        'start' => ['dateTime' => request('start')],
+        'end' => ['dateTime' => request('end')],
+    ];
+
+    $event = $googleCalendarService->createEvent('primary', $eventData);
+    return redirect('/google-calendar/events');
+});
+
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -26,6 +73,12 @@ Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.ind
 Route::get('/events/{event}/calendar', [BookingController::class, 'create'])->name('bookings.create');
 Route::post('/events/{event}/book', [BookingController::class, 'store'])->name('bookings.store');
 
-
+Route::get('/bookings/thank-you', function () {
+    $booking = session('booking');
+    if (!$booking) {
+        return redirect()->route('events.index')->withErrors('Booking not found.');
+    }
+    return view('bookings.thank-you', compact('booking'));
+})->name('bookings.thank-you');
 
 require __DIR__ . '/auth.php';
